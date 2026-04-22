@@ -251,19 +251,16 @@ mongoose.connect(process.env.MONGO_URI)
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendDist));
 
-/**
- * MASTER FIX FOR NODE v24 / EXPRESS PathError
- * We use a named parameter ":any*" which is the standard 
- * for modern routing engines to handle "match everything".
- */
-app.get('/:any*', (req, res) => {
-  // Check if it's an API call that missed a route, if so, send 404 instead of index.html
-  if (req.path.startsWith('/api')) {
+// Use the simplest possible wildcard for modern Node compatibility
+app.get('*', (req, res) => {
+  // If the request is for an API, send a 404 instead of the HTML file
+  if (req.originalUrl.startsWith('/api')) {
     return res.status(404).json({ message: "API route not found" });
   }
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
+// Port Binding Fix
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 VitalDrop Server Active on Port ${PORT}`);
