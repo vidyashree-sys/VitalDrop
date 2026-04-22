@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // THIS FORCES VITE TO BROADCAST ON THE NETWORK
-  }
+  },
+  build: {
+    chunkSizeWarningLimit: 1000, // Increase limit to 1000kB
+  },
 })
