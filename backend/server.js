@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path'); // Moved up for consistency
+const path = require('path'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -251,11 +251,15 @@ mongoose.connect(process.env.MONGO_URI)
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendDist));
 
-// Use a simple string wildcard which is safer in newer Express versions
-app.get('*', (req, res, next) => {
-  // Ensure API calls don't get trapped here
-  if (req.url.startsWith('/api')) {
-    return next();
+/**
+ * MASTER FIX FOR NODE v24 / EXPRESS PathError
+ * We use a named parameter ":any*" which is the standard 
+ * for modern routing engines to handle "match everything".
+ */
+app.get('/:any*', (req, res) => {
+  // Check if it's an API call that missed a route, if so, send 404 instead of index.html
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: "API route not found" });
   }
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
