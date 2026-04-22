@@ -35,7 +35,7 @@ const HospitalDashboard = () => {
   const [requestHistory, setRequestHistory] = useState([]);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io('VITE_API_URL' in process.env ? process.env.VITE_API_URL : 'http://localhost:5000', { transports: ['websocket'] });
     setSocket(newSocket);
 
     if (user?.id) {
@@ -61,7 +61,7 @@ const HospitalDashboard = () => {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/requests/my-requests', {
+      const res = await axios.get(`${process.env.VITE_API_URL}/api/requests/my-requests`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRequestHistory(Array.isArray(res.data) ? res.data : []);
@@ -87,7 +87,7 @@ const HospitalDashboard = () => {
 
   const submitRoutineRequest = async () => {
     try {
-      const res = await axios.post('http://localhost:5000/api/requests/routine', {
+      const res = await axios.post(`${process.env.VITE_API_URL}/api/requests/routine`, {
         hospitalName: user.name, bloodGroup: routineData.bloodGroup,
         units: routineData.units, requiredBy: routineData.requiredBy 
       }, { headers: { Authorization: `Bearer ${token}` } });

@@ -44,7 +44,7 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const response = await axios.post('http://localhost:5000/api/auth/login', {
+        const response = await axios.post(`${process.env.VITE_API_URL}/api/auth/login`, {
           email: formData.secure_email,
           password: formData.secure_pass
         });
@@ -87,7 +87,7 @@ const Auth = () => {
           };
         }
 
-        await axios.post('http://localhost:5000/api/auth/register', regData);
+        await axios.post(`${process.env.VITE_API_URL}/api/auth/register`, regData);
         setSuccessMsg('Registration successful! Please log in.');
         setIsLogin(true); 
       }
