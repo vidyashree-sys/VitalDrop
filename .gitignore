@@ -1,0 +1,12 @@
+# Ignore sensitive keys
+.env
+*.env.local
+
+# Ignore huge dependency folders
+node_modules/
+dist/
+build/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
