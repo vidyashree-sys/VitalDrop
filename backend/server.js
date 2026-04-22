@@ -252,9 +252,12 @@ mongoose.connect(process.env.MONGO_URI)
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendDist));
 
-// Modern Catch-all for React Router on Node v24+
-app.get('/:path*', (req, res) => {
-  if (req.path.startsWith('/api')) return res.status(404).json({ message: "API not found" });
+/**
+ * MASTER FIX FOR PathError:
+ * Instead of using a string with '*', we use a Regex literal ( /^(?!\/api).+/ )
+ * This tells Express: "Match any path that DOES NOT start with /api"
+ */
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
