@@ -15,7 +15,7 @@
 ---
 
 ## 🚀 Live Links
-* **Live Prototype:** [VitalDrop Web Portal]([<YOUR_RENDER_URL_HERE>](https://vitaldrop-83nr.onrender.com))
+* **Live Prototype:**https://vitaldrop-83nr.onrender.com
 * **Demo Video:** coming soon
 * **Pitch Deck:** coming soon
 ---
