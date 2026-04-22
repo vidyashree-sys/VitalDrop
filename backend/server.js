@@ -3,16 +3,16 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
-const path = require('path'); 
 
 const app = express();
 const server = http.createServer(app);
 
-// Optimized CORS for production/deployment
+// --- CLOUD-READY CORS CONFIG ---
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "*", // Allows dynamic connection from any frontend deployment
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
@@ -21,6 +21,7 @@ const io = new Server(server, {
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
+// --- ROUTES ---
 const authRoutes = require('./routes/auth');
 const inventoryRoutes = require('./routes/inventory');
 const requestRoutes = require('./routes/requests');
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/requests', requestRoutes);
 
+// --- WEBSOCKET LOGIC (GEOSPATIAL & MUTEX) ---
 io.on('connection', (socket) => {
   console.log(`🟢 Node Connected: ${socket.id}`);
 
@@ -241,8 +243,7 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get('/api/requests/my-requests', (req, res) => res.status(200).json([]));
-
+// --- DATABASE ---
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB Connected'))
   .catch((err) => console.log('❌ MongoDB Error:', err));
@@ -251,17 +252,14 @@ mongoose.connect(process.env.MONGO_URI)
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendDist));
 
-// Use the simplest possible wildcard for modern Node compatibility
-app.get('*', (req, res) => {
-  // If the request is for an API, send a 404 instead of the HTML file
-  if (req.originalUrl.startsWith('/api')) {
-    return res.status(404).json({ message: "API route not found" });
-  }
+// Modern Catch-all for React Router on Node v24+
+app.get('/:path*', (req, res) => {
+  if (req.path.startsWith('/api')) return res.status(404).json({ message: "API not found" });
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
-// Port Binding Fix
+// --- PORT BINDING ---
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 VitalDrop Server Active on Port ${PORT}`);
+  console.log(`🚀 VitalDrop Active on Port ${PORT}`);
 });
