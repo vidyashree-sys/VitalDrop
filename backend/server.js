@@ -1,16 +1,15 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
-
-// dotenv.config();
+const path = require('path'); // Moved up for consistency
 
 const app = express();
 const server = http.createServer(app);
 
+// Optimized CORS for production/deployment
 const io = new Server(server, {
   cors: {
     origin: "*", 
@@ -28,7 +27,7 @@ const requestRoutes = require('./routes/requests');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 const Trip = require('./models/Trip');
-const User = require('./models/User'); // NEEDED FOR GEOSPATIAL QUERIES
+const User = require('./models/User');
 
 app.use('/api/public', publicRoutes);
 app.use('/api/admin', adminRoutes);
@@ -39,7 +38,6 @@ app.use('/api/requests', requestRoutes);
 io.on('connection', (socket) => {
   console.log(`🟢 Node Connected: ${socket.id}`);
 
-  // --- LIVE GPS RELAY ---
   socket.on('driver-location-update', (data) => {
     if (data.hospitalId && data.coords) {
       io.emit(`location-update-${data.hospitalId}`, data.coords);
@@ -47,10 +45,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ==========================================
-  //     EMERGENCY: 5KM GEOSPATIAL TARGETING
-  // ==========================================
-  
   socket.on('trigger-emergency', async (emergencyData) => {
     try {
       const newEmergency = new Trip({
@@ -63,8 +57,6 @@ io.on('connection', (socket) => {
       });
       await newEmergency.save();
 
-      // 1. FIND BANKS WITHIN 5KM (5000 meters)
-      // Note: Coordinates must be [longitude, latitude]
       let targetBanks = [];
       if (emergencyData.hospitalCoords) {
         const nearbyBanks = await User.find({
@@ -79,33 +71,26 @@ io.on('connection', (socket) => {
         targetBanks = nearbyBanks.map(b => b._id.toString());
       }
 
-      // 2. BROADCAST ALERT (Frontend will filter by targetBanks array)
       io.emit('bank-emergency-alert', {
         ...emergencyData,
         tripId: newEmergency._id,
         type: 'emergency',
-        targetBanks: targetBanks // Array of allowed Bank IDs
+        targetBanks: targetBanks 
       });
-      console.log(`🚨 SOS Triggered. Notifying ${targetBanks.length} nearby banks.`);
     } catch (error) { console.error("SOS Error:", error); }
   });
 
-  // --- MUTEX LOCK: BANK ACCEPTS ---
   socket.on('bank-accept-emergency', async (data) => {
     try {
-      // ATOMIC LOCK: Only succeeds if status is STILL 'awaiting_bank'
       const lockedTrip = await Trip.findOneAndUpdate(
         { _id: data.tripId, status: 'awaiting_bank' },
         { $set: { status: 'searching', bank: data.bankId, bankName: data.bankName } },
         { new: true }
       );
 
-      if (!lockedTrip) return; // Mutex failed. Another bank got it.
-
-      // 1. RIP OFF OTHER BANKS SCREENS INSTANTLY
+      if (!lockedTrip) return;
       socket.broadcast.emit('emergency-resolved', lockedTrip._id);
 
-      // 2. FIND DRIVERS WITHIN 5KM OF THE BANK
       let targetDrivers = [];
       if (data.bankCoords) {
         const nearbyDrivers = await User.find({
@@ -120,7 +105,6 @@ io.on('connection', (socket) => {
         targetDrivers = nearbyDrivers.map(d => d._id.toString());
       }
 
-      // 3. ALERT NEARBY DRIVERS
       io.emit('emergency-alert', {
         tripId: lockedTrip._id,
         hospitalName: lockedTrip.hospitalName,
@@ -129,33 +113,26 @@ io.on('connection', (socket) => {
         bloodGroup: lockedTrip.bloodGroup,
         unitsRequired: lockedTrip.units,
         type: 'emergency',
-        targetDrivers: targetDrivers // Array of allowed Driver IDs
+        targetDrivers: targetDrivers 
       });
     } catch (error) { console.error("Bank Lock Error:", error); }
   });
 
-  // ==========================================
-  //         ROUTINE PROTOCOL (BLUE)
-  // ==========================================
-
   socket.on('trigger-routine', (routineData) => {
-    // Routine is network-wide (no 5km limit needed usually, but can be added later)
     socket.broadcast.emit('bank-routine-alert', routineData);
   });
 
   socket.on('bank-accept-routine', async (data) => {
     try {
       const trip = await Trip.findOneAndUpdate(
-        { _id: data.tripId, status: 'pending_approval' }, // Assumes routine starts here
+        { _id: data.tripId, status: 'pending_approval' }, 
         { $set: { status: 'searching', bank: data.bankId, bankName: data.bankName } }, 
         { new: true }
       );
       
       if (trip) {
-        // Rip from other banks
         socket.broadcast.emit('routine-resolved', trip._id);
         io.emit(`routine-approved-${trip.hospital}`, { tripId: trip._id });
-
         io.emit('routine-dispatch-alert', {
           tripId: trip._id,
           hospitalName: trip.hospitalName,
@@ -170,13 +147,8 @@ io.on('connection', (socket) => {
     } catch (error) { console.error("Routine Accept Error:", error); }
   });
 
-  // ==========================================
-  //     MUTEX LOCK: DONOR PLEDGES TO DONATE
-  // ==========================================
-
   socket.on('donor-pledge-shortage', async (data) => {
     try {
-      // ATOMIC LOCK: Try to lock the trip from 'awaiting_bank' or 'pending_approval'
       const lockedTrip = await Trip.findOneAndUpdate(
         { 
           _id: data.tripId, 
@@ -185,9 +157,9 @@ io.on('connection', (socket) => {
         { 
           $set: { 
             status: 'donor_pledged', 
-            driver: data.donorId, // We use the driver field to store the donor temporarily
+            driver: data.donorId, 
             driverName: data.donorName, 
-            type: data.type // 'emergency' or 'routine'
+            type: data.type 
           } 
         },
         { new: true }
@@ -198,11 +170,9 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // 1. RIP FROM EVERYONE ELSE'S SCREENS (Banks and other Donors)
       socket.broadcast.emit('emergency-resolved', lockedTrip._id);
       socket.broadcast.emit('routine-resolved', lockedTrip._id);
 
-      // 2. ALERT THE HOSPITAL THAT A DONOR IS COMING
       io.emit(`donor-pledged-${lockedTrip.hospital}`, {
         tripId: lockedTrip._id,
         donorName: lockedTrip.driverName,
@@ -210,25 +180,13 @@ io.on('connection', (socket) => {
         type: lockedTrip.type
       });
 
-      // 3. CONFIRM TO THE WINNING DONOR
       socket.emit('pledge-success', { tripId: lockedTrip._id });
-      
-      console.log(`🩸 Donor ${lockedTrip.driverName} pledged to help ${lockedTrip.hospitalName}`);
-
-    } catch (error) {
-      console.error("Donor Pledge Error:", error);
-    }
+    } catch (error) { console.error("Donor Pledge Error:", error); }
   });
   
-  // ==========================================
-  //     MUTEX LOCK: DRIVER ACCEPTS
-  // ==========================================
-
   socket.on('driver-accept-trip', async (data) => { 
     try {
       const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-
-      // ATOMIC LOCK
       const lockedTrip = await Trip.findOneAndUpdate(
         { _id: data.tripId, status: 'searching' },
         { 
@@ -247,7 +205,6 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Rip from other drivers
       socket.broadcast.emit('emergency-resolved', lockedTrip._id);
       socket.broadcast.emit('routine-resolved', lockedTrip._id);
 
@@ -261,7 +218,6 @@ io.on('connection', (socket) => {
     } catch (error) { console.error("Driver Accept Error:", error); }
   });
 
-  // --- WORKFLOW COMPLETION ---
   socket.on('driver-arrived-at-bank', async (tripId) => { 
     try {
       await Trip.findByIdAndUpdate(tripId, { status: 'en_route_to_hospital' });
@@ -291,18 +247,18 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB Connected'))
   .catch((err) => console.log('❌ MongoDB Error:', err));
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server active on port ${PORT}`);
+// --- DEPLOYMENT FRONTEND SERVING ---
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+app.use(express.static(frontendDist));
+
+// Fix for Node v24/Express Pathing
+app.get('/:path(.*)', (req, res, next) => {
+  // If the request is for an API, don't serve index.html
+  if (req.url.startsWith('/api')) return next();
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
-const path = require('path');
-
-// 1. Serve static files from the React frontend build folder
-// Change 'dist' to 'build' if you are not using Vite
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// 2. The "Catch-All" route: If no API route matches, serve index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 VitalDrop Server Active on Port ${PORT}`);
 });
