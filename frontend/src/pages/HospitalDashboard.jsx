@@ -35,14 +35,16 @@ const HospitalDashboard = () => {
   const [requestHistory, setRequestHistory] = useState([]);
 
   useEffect(() => {
-    const newSocket = io('VITE_API_URL' in process.env ? process.env.VITE_API_URL : 'http://localhost:5000', { transports: ['websocket'] });
+    // PRODUCTION FIX: Removed localhost and VITE_API_URL. 
+    // io() defaults to the host that serves the page (your Render URL).
+    const newSocket = io({ transports: ['websocket'] });
     setSocket(newSocket);
 
     if (user?.id) {
       newSocket.on(`trip-started-${user.id}`, (data) => setActiveTrip(data));
       newSocket.on(`location-update-${user.id}`, (coords) => setDriverLocation(coords));
       
-      // NEW: Listen for Hero Donors!
+      // Listen for Hero Donors
       newSocket.on(`donor-pledged-${user.id}`, (data) => {
         alert(`🩸 INCOMING DONOR! ${data.donorName} has pledged to donate ${data.bloodGroup} and is en route!`);
         fetchHistory(); // Refresh history to show 'donor_pledged' status
@@ -61,7 +63,8 @@ const HospitalDashboard = () => {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get(`${process.env.VITE_API_URL}/api/requests/my-requests`, {
+      // PRODUCTION FIX: Relative path used here.
+      const res = await axios.get('/api/requests/my-requests', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRequestHistory(Array.isArray(res.data) ? res.data : []);
@@ -87,7 +90,8 @@ const HospitalDashboard = () => {
 
   const submitRoutineRequest = async () => {
     try {
-      const res = await axios.post(`${process.env.VITE_API_URL}/api/requests/routine`, {
+      // PRODUCTION FIX: Relative path used here.
+      const res = await axios.post('/api/requests/routine', {
         hospitalName: user.name, bloodGroup: routineData.bloodGroup,
         units: routineData.units, requiredBy: routineData.requiredBy 
       }, { headers: { Authorization: `Bearer ${token}` } });

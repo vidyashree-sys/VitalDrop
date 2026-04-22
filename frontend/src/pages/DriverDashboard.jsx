@@ -29,7 +29,8 @@ const DriverDashboard = () => {
   const [driverCoords, setDriverCoords] = useState([17.30, 76.81]); // Starting slightly southwest of bank
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    // PRODUCTION FIX: Use relative socket connection for Render deployment
+    const newSocket = io({ transports: ['websocket'] });
     setSocket(newSocket);
 
     // CATCH ALERTS (Backend now filters this by 5km radius)

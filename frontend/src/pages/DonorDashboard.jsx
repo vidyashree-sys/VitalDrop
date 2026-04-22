@@ -30,7 +30,8 @@ const DonorDashboard = () => {
   const [pledgedDonation, setPledgedDonation] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    // PRODUCTION FIX: Use relative socket connection for Render deployment
+    const newSocket = io({ transports: ['websocket'] });
     setSocket(newSocket);
 
     // Listen for network-wide emergencies so donors can step up
@@ -49,7 +50,7 @@ const DonorDashboard = () => {
     });
 
     return () => newSocket.close();
-  }, []);
+  }, [donorProfile.bloodGroup]);
 
   // Inside DonorDashboard.jsx
   const pledgeDonation = (shortage) => {

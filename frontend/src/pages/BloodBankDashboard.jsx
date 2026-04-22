@@ -32,11 +32,14 @@ const BloodBankDashboard = () => {
   const [driverLocation, setDriverLocation] = useState(BANK_COORDS);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    /**
+     * PRODUCTION FIX: io() without arguments automatically connects 
+     * to the host serving the page (your Render URL).
+     */
+    const newSocket = io({ transports: ['websocket'] });
     setSocket(newSocket);
 
     // --- EMERGENCY PROTOCOLS ---
-    // Filter alerts: Only show if this bank is within the 5km target array (handled mostly by backend, but safe to filter here too if needed)
     newSocket.on('bank-emergency-alert', (data) => setIncomingSOS(prev => [...prev, data]));
     newSocket.on('emergency-resolved', (tripId) => setIncomingSOS(prev => prev.filter(req => req.tripId !== tripId)));
     
