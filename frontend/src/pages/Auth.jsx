@@ -44,18 +44,20 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const response = await axios.post(`${process.env.VITE_API_URL}/api/auth/login`, {
+        /**
+         * PRODUCTION FIX: Use relative paths ('/api/...') 
+         * instead of absolute URLs to ensure it works on Render.
+         */
+        const response = await axios.post('/api/auth/login', {
           email: formData.secure_email,
           password: formData.secure_pass
         });
         
-        const { token, user } = response.data; // Standardizing to match most backends
-        const finalUser = user || response.data; // Fallback if data is flat
+        const { token, user } = response.data; 
+        const finalUser = user || response.data;
 
-        // Save to Context
         login(token, finalUser); 
 
-        // CRITICAL: Small delay to ensure localStorage is set before navigating
         setTimeout(() => {
             const role = finalUser.role;
             if (role === 'admin') navigate('/admin-dashboard');
@@ -87,12 +89,13 @@ const Auth = () => {
           };
         }
 
-        await axios.post(`${process.env.VITE_API_URL}/api/auth/register`, regData);
+        // PRODUCTION FIX: Relative path used here as well
+        await axios.post('/api/auth/register', regData);
         setSuccessMsg('Registration successful! Please log in.');
         setIsLogin(true); 
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Connection failed. Is the backend running?');
+      setError(err.response?.data?.message || 'Connection failed. Ensure MongoDB Atlas access is open (0.0.0.0/0).');
     } finally {
       setIsLoading(false);
     }
