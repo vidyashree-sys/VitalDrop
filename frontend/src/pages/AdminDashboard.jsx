@@ -27,7 +27,8 @@ const AdminDashboard = () => {
     // 1. Fetch History Logs
     const fetchHistory = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/requests/all', {
+        // PRODUCTION FIX: Use relative path to connect to Render Backend
+        const res = await axios.get('/api/requests/all', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAllRequests(Array.isArray(res.data) ? res.data : []);
@@ -49,7 +50,8 @@ const AdminDashboard = () => {
 
   // 3. LIVE RADAR SOCKET CONNECTION
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    // PRODUCTION FIX: Use dynamic host for websocket
+    const newSocket = io({ transports: ['websocket'] });
     
     // Listen for any driver moving anywhere in the network
     newSocket.on('driver-location-update', (data) => {
