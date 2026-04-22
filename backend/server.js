@@ -13,13 +13,13 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", 
+    origin: "*", 
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
 });
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
 const authRoutes = require('./routes/auth');
@@ -294,4 +294,15 @@ mongoose.connect(process.env.MONGO_URI)
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server active on port ${PORT}`);
+});
+
+const path = require('path');
+
+// 1. Serve static files from the React frontend build folder
+// Change 'dist' to 'build' if you are not using Vite
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// 2. The "Catch-All" route: If no API route matches, serve index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
