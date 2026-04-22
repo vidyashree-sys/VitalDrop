@@ -251,10 +251,12 @@ mongoose.connect(process.env.MONGO_URI)
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendDist));
 
-// Fix for Node v24/Express Pathing
-app.get('/:path(.*)', (req, res, next) => {
-  // If the request is for an API, don't serve index.html
-  if (req.url.startsWith('/api')) return next();
+// Use a simple string wildcard which is safer in newer Express versions
+app.get('*', (req, res, next) => {
+  // Ensure API calls don't get trapped here
+  if (req.url.startsWith('/api')) {
+    return next();
+  }
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
