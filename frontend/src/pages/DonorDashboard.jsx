@@ -70,8 +70,32 @@ const DonorDashboard = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
-      
+    <div className="dashboard-root" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
+      {/* 📱 UNIVERSAL MOBILE RESPONSIVE CSS */}
+      <style>
+        {`
+          @media (max-width: 768px) {
+            /* 1. Stack the main layout vertically */
+            .dashboard-root { flex-direction: column !important; }
+            
+            /* 2. Fix the Sidebar to sit at the top and scroll horizontally */
+            aside { width: 100% !important; height: auto !important; padding: 20px !important; border-right: none !important; border-bottom: 1px solid #1e293b !important; }
+            aside nav { display: flex !important; overflow-x: auto !important; gap: 10px !important; flex-direction: row !important; }
+            aside nav div, aside nav button { white-space: nowrap !important; margin-bottom: 0 !important; flex: 0 0 auto !important; }
+            
+            /* 3. Fix the Header to wrap nicely */
+            header { padding: 20px !important; height: auto !important; flex-direction: column !important; align-items: flex-start !important; gap: 15px !important; }
+            header > div { width: 100% !important; justify-content: space-between !important; }
+            
+            /* 4. Force all Grids to 1 Column & reduce padding */
+            main > div { padding: 20px !important; grid-template-columns: 1fr !important; display: flex !important; flex-direction: column !important; }
+            
+            /* 5. Shrink giant OTP inputs and maps for small screens */
+            input[type="text"], input[type="password"] { font-size: 24px !important; letter-spacing: 5px !important; padding: 15px !important; }
+            .leaflet-container { height: 300px !important; }
+          }
+        `}
+      </style>
       {/* PROFESSIONAL SIDEBAR */}
       <aside style={{ width: '280px', backgroundColor: '#0f172a', color: 'white', padding: '30px 20px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>

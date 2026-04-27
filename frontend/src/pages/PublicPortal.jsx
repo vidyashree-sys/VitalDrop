@@ -6,8 +6,32 @@ const PublicPortal = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0f172a', fontFamily: 'Inter, sans-serif', color: 'white', overflowX: 'hidden' }}>
-      
+    <div className="dashboard-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#0f172a', fontFamily: 'Inter, sans-serif', color: 'white', overflowX: 'hidden' }}>
+      {/* 📱 UNIVERSAL MOBILE RESPONSIVE CSS */}
+      <style>
+        {`
+          @media (max-width: 768px) {
+            /* 1. Stack the main layout vertically */
+            .dashboard-root { flex-direction: column !important; }
+            
+            /* 2. Fix the Sidebar to sit at the top and scroll horizontally */
+            aside { width: 100% !important; height: auto !important; padding: 20px !important; border-right: none !important; border-bottom: 1px solid #1e293b !important; }
+            aside nav { display: flex !important; overflow-x: auto !important; gap: 10px !important; flex-direction: row !important; }
+            aside nav div, aside nav button { white-space: nowrap !important; margin-bottom: 0 !important; flex: 0 0 auto !important; }
+            
+            /* 3. Fix the Header to wrap nicely */
+            header { padding: 20px !important; height: auto !important; flex-direction: column !important; align-items: flex-start !important; gap: 15px !important; }
+            header > div { width: 100% !important; justify-content: space-between !important; }
+            
+            /* 4. Force all Grids to 1 Column & reduce padding */
+            main > div { padding: 20px !important; grid-template-columns: 1fr !important; display: flex !important; flex-direction: column !important; }
+            
+            /* 5. Shrink giant OTP inputs and maps for small screens */
+            input[type="text"], input[type="password"] { font-size: 24px !important; letter-spacing: 5px !important; padding: 15px !important; }
+            .leaflet-container { height: 300px !important; }
+          }
+        `}
+      </style>
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(2, 6, 23, 0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
