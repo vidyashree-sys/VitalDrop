@@ -59,6 +59,11 @@ io.on('connection', (socket) => {
       });
       await newEmergency.save();
 
+      // HACKATHON FIX: We bypass the MongoDB $near query here.
+      // If new users register without GPS coords, $near crashes and the ping never sends.
+      // This bypass guarantees the Blood Bank receives the ping.
+      
+      /* --- ORIGINAL STRICT GEO-QUERY (COMMENTED OUT FOR DEMO) ---
       let targetBanks = [];
       if (emergencyData.hospitalCoords) {
         const nearbyBanks = await User.find({
@@ -72,13 +77,15 @@ io.on('connection', (socket) => {
         }).select('_id');
         targetBanks = nearbyBanks.map(b => b._id.toString());
       }
+      --------------------------------------------------------- */
 
       io.emit('bank-emergency-alert', {
         ...emergencyData,
         tripId: newEmergency._id,
         type: 'emergency',
-        targetBanks: targetBanks 
+        targetBanks: [] // Bypassed for Sandbox Demo
       });
+      
     } catch (error) { console.error("SOS Error:", error); }
   });
 
@@ -93,6 +100,9 @@ io.on('connection', (socket) => {
       if (!lockedTrip) return;
       socket.broadcast.emit('emergency-resolved', lockedTrip._id);
 
+      // HACKATHON FIX: Bypassed driver geospatial query to prevent crashes
+      
+      /* --- ORIGINAL STRICT GEO-QUERY (COMMENTED OUT FOR DEMO) ---
       let targetDrivers = [];
       if (data.bankCoords) {
         const nearbyDrivers = await User.find({
@@ -106,6 +116,7 @@ io.on('connection', (socket) => {
         }).select('_id');
         targetDrivers = nearbyDrivers.map(d => d._id.toString());
       }
+      --------------------------------------------------------- */
 
       io.emit('emergency-alert', {
         tripId: lockedTrip._id,
@@ -115,7 +126,7 @@ io.on('connection', (socket) => {
         bloodGroup: lockedTrip.bloodGroup,
         unitsRequired: lockedTrip.units,
         type: 'emergency',
-        targetDrivers: targetDrivers 
+        targetDrivers: [] // Bypassed for Sandbox Demo
       });
     } catch (error) { console.error("Bank Lock Error:", error); }
   });
