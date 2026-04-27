@@ -4,30 +4,40 @@ import { ShieldCheck, LogOut, Activity, Users, Database, LayoutDashboard, Map as
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
-import { io } from 'socket.io-client'; // NEEDED FOR LIVE RADAR
+import { io } from 'socket.io-client'; 
 
 // --- CUSTOM COLORED MAP MARKERS FOR ADMIN RADAR ---
 const hospitalIcon = new L.divIcon({ className: 'custom-icon', html: `<div style="background-color: #3b82f6; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>` });
 const bankIcon = new L.divIcon({ className: 'custom-icon', html: `<div style="background-color: #10b981; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>` });
 const driverIcon = new L.divIcon({ className: 'custom-icon', html: `<div style="background-color: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(239,68,68,0.8); animation: pulse 1.5s infinite;"></div>` });
 
-// Mock static locations for the map until you have real DB data
+// Mock static locations for the map until you have real DB data for facilities
 const MOCK_HOSPITALS = [{ id: 'h1', name: 'City Hospital', coords: [17.3297, 76.8343] }, { id: 'h2', name: 'District General', coords: [17.34, 76.85] }];
 const MOCK_BANKS = [{ id: 'b1', name: 'Red Cross Bank', coords: [17.31, 76.82] }];
 
 const AdminDashboard = () => {
   const { user, logout, token } = useContext(AuthContext);
   
-  const [activeTab, setActiveTab] = useState('DASHBOARD'); // DASHBOARD, KYC, MAP
+  const [activeTab, setActiveTab] = useState('DASHBOARD'); 
   const [allRequests, setAllRequests] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
-  const [activeDrivers, setActiveDrivers] = useState({}); // Stores live driver locations { driverId: coords }
+  const [activeDrivers, setActiveDrivers] = useState({}); 
+
+  const fetchPendingKYC = async () => {
+    try {
+      // PRODUCTION FIX: Fetch REAL pending users from your database
+      const res = await axios.get('/api/admin/pending-users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingUsers(Array.isArray(res.data) ? res.data : []);
+    } catch (err) { 
+      console.error("Error fetching pending KYC:", err); 
+    }
+  };
 
   useEffect(() => {
-    // 1. Fetch History Logs
     const fetchHistory = async () => {
       try {
-        // PRODUCTION FIX: Use relative path to connect to Render Backend
         const res = await axios.get('/api/requests/all', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -35,33 +45,21 @@ const AdminDashboard = () => {
       } catch (err) { console.error("Admin fetch error", err); }
     };
 
-    // 2. Fetch KYC Pending Users (MOCK DATA FOR NOW - Replace with real API later)
-    const fetchPendingKYC = async () => {
-      setPendingUsers([
-        { id: 'u1', name: 'City Central Hospital', role: 'hospital', regNum: 'HMIS-9921', date: new Date().toISOString() },
-        { id: 'u2', name: 'Red Cross District', role: 'blood_bank', regNum: 'BB-442', date: new Date().toISOString() },
-        { id: 'u3', name: 'John Doe Logistics', role: 'driver', plate: 'KA-32-M-1122', date: new Date().toISOString() }
-      ]);
-    };
-
     fetchHistory();
-    fetchPendingKYC();
+    fetchPendingKYC(); // Call the real fetcher on load
   }, [token]);
 
-  // 3. LIVE RADAR SOCKET CONNECTION
+  // LIVE RADAR SOCKET CONNECTION
   useEffect(() => {
-    // PRODUCTION FIX: Use dynamic host for websocket
     const newSocket = io({ transports: ['websocket'] });
     
-    // Listen for any driver moving anywhere in the network
     newSocket.on('driver-location-update', (data) => {
       setActiveDrivers(prev => ({
         ...prev,
-        [data.tripId]: data.coords // Store by tripId so multiple drivers don't overwrite each other
+        [data.tripId]: data.coords 
       }));
     });
 
-    // When a trip finishes, remove that driver from the radar
     newSocket.on('trip-completed', (tripId) => {
       setActiveDrivers(prev => {
         const updated = { ...prev };
@@ -73,9 +71,26 @@ const AdminDashboard = () => {
     return () => newSocket.close();
   }, []);
 
-  const handleKYCAction = (userId, action) => {
-    alert(`User ${userId} has been ${action === 'approve' ? 'APPROVED' : 'REJECTED'}.`);
-    setPendingUsers(prev => prev.filter(u => u.id !== userId));
+  // PRODUCTION FIX: Connect Approval/Reject buttons to actual backend routes
+  const handleKYCAction = async (userId, action) => {
+    try {
+      if (action === 'approve') {
+        await axios.put(`/api/admin/approve/${userId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert("✅ Node Verified & Approved for Network Access.");
+      } else if (action === 'reject') {
+        await axios.delete(`/api/admin/reject/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert("❌ Node Rejected and Removed.");
+      }
+      // Refresh the list to remove the user from the screen
+      fetchPendingKYC();
+    } catch (error) {
+      console.error(`Error trying to ${action} user:`, error);
+      alert(`Failed to ${action} user. Check console for details.`);
+    }
   };
 
   const emergencyCount = allRequests.filter(r => r.type === 'emergency').length;
@@ -189,7 +204,7 @@ const AdminDashboard = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {pendingUsers.map(user => (
-                  <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', border: '1px solid #334155', borderRadius: '16px', backgroundColor: '#0f172a' }}>
+                  <div key={user._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', border: '1px solid #334155', borderRadius: '16px', backgroundColor: '#0f172a' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
                         <strong style={{ fontSize: '18px', color: 'white' }}>{user.name}</strong>
@@ -198,12 +213,16 @@ const AdminDashboard = () => {
                         </span>
                       </div>
                       <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
-                        {user.regNum ? `Govt Reg: ${user.regNum}` : `License Plate: ${user.plate}`} • Applied: {new Date(user.date).toLocaleDateString()}
+                        {/* Dynamically show either Med Reg Number or License Plate based on what exists */}
+                        {user.organizationDetails?.medicalRegistrationNumber ? `Govt Reg: ${user.organizationDetails.medicalRegistrationNumber}` : ''}
+                        {user.driverDetails?.vehiclePlate ? `License Plate: ${user.driverDetails.vehiclePlate}` : ''} 
+                        {(!user.organizationDetails?.medicalRegistrationNumber && !user.driverDetails?.vehiclePlate) ? 'Contact: ' + user.contact : ''} 
+                        {' '}• Applied: {new Date(user.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => handleKYCAction(user.id, 'reject')} style={{ padding: '10px 15px', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}><XCircle size={16}/> Reject</button>
-                      <button onClick={() => handleKYCAction(user.id, 'approve')} style={{ padding: '10px 15px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}><CheckCircle size={16}/> Verify & Approve</button>
+                      <button onClick={() => handleKYCAction(user._id, 'reject')} style={{ padding: '10px 15px', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}><XCircle size={16}/> Reject</button>
+                      <button onClick={() => handleKYCAction(user._id, 'approve')} style={{ padding: '10px 15px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}><CheckCircle size={16}/> Verify & Approve</button>
                     </div>
                   </div>
                 ))}

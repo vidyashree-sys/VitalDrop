@@ -38,4 +38,17 @@ router.put('/approve/:id', async (req, res) => {
   }
 });
 
+// @route   DELETE /api/admin/reject/:id
+// @desc    Reject and delete a pending user
+router.delete('/reject/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User rejected and removed.' });
+  } catch (error) {
+    console.error("Error rejecting user:", error);
+    res.status(500).json({ message: 'Error rejecting user' });
+  }
+});
+
 module.exports = router;

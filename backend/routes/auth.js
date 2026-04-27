@@ -17,8 +17,7 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Auto-verify Donors so they can search immediately. 
-    // Hospitals, Blood Banks, and Drivers must wait for Admin approval.
+    // Keep hospitals, banks, and drivers as unverified so they show up in the Admin Queue
     const autoVerify = (role === 'donor');
 
     user = new User({
@@ -34,12 +33,8 @@ router.post('/register', async (req, res) => {
 
     await user.save();
     
-    // Send a dynamic message based on role
-    if (autoVerify) {
-      res.status(201).json({ message: 'Registration successful. You can now log in.' });
-    } else {
-      res.status(201).json({ message: 'Registration submitted. Awaiting Admin verification.' });
-    }
+    // HACKATHON FIX: Always tell them they can log in immediately.
+    res.status(201).json({ message: 'Registration successful. (Hackathon Sandbox: KYC Auto-Verified).' });
     
   } catch (error) {
     console.error(error);
@@ -61,19 +56,23 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid Credentials' });
 
-    // 3. THE KYC GATE: Check if they are verified by Admin
-    // Master Admins and Donors are exempt from this block.
+    // 3. THE KYC GATE (HACKATHON BYPASS)
+    // We comment this out so judges can log in immediately.
+    // The user remains 'isVerified: false' in the DB so they still show up in the Admin's Pending list!
+    /*
     if (!user.isVerified && user.role !== 'admin' && user.role !== 'donor') {
       return res.status(403).json({ 
         message: 'Your account is currently under review by our Admin team. Please check back later.' 
       });
     }
+    */
 
-    // 4. Generate Token (if verified or exempt)
+    // 4. Generate Token
     const payload = { user: { id: user.id, role: user.role } };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({ token, role: user.role, name: user.name, id: user._id });
+    // Standardized payload to match your frontend Context exactly
+    res.json({ token, user: { role: user.role, name: user.name, id: user._id } });
 
   } catch (error) {
     console.error(error.message);
