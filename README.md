@@ -16,8 +16,7 @@
 
 ## 🚀 Live Links
 * **Live Prototype:**https://vitaldrop-83nr.onrender.com
-* **Demo Video:** coming soon
-* **Pitch Deck:** coming soon
+* **Demo Video:**https://youtu.be/NwBjB6G9AZk
 ---
 
 ## ✨ Key Features & Technical Highlights
